@@ -27,21 +27,30 @@ app.get('/students/:id', async (req, res) => {
   }
 });
 
-// POST - create new student
+// POST - create student with custom ID
 app.post('/students', async (req, res) => {
   try {
-    const { name, dept } = req.body;
+    const { _id, name, dept } = req.body;  // তুমি নিজে ID দিতে পারবে
 
-    if (!name || !dept) {
-      return res.status(400).json({ message: 'Name and Dept are required' });
+    if (!_id || !name || !dept) {
+      return res.status(400).json({ message: 'ID, Name and Dept are required' });
     }
 
-    const student = await Student.create({ name, dept });
+    // Check if ID already exists
+    const existingStudent = await Student.findById(_id);
+    if (existingStudent) {
+      return res.status(400).json({ message: 'Student with this ID already exists' });
+    }
+
+    const student = await Student.create({ _id, name, dept });
     res.status(201).json(student);
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
+
 
 // PUT - update student by ID
 app.put('/students/:id', async (req, res) => {
