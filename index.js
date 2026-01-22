@@ -96,34 +96,33 @@ app.delete('/students', async (req, res) => {
   }
 });
 
-// PATCH - Update only status/role field
-app.patch('/students/:id/status', async (req, res) => {
+// POST - File upload for resource (student)
+app.post('/api/resource/:id/upload', upload.single('file'), async (req, res) => {
   try {
-    const { status, role } = req.body;
-
-    const updateData = {};
-    if (status) updateData.status = status;
-    if (role) updateData.role = role;
-
-    if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ message: 'At least one field (status or role) is required' });
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const student = await Student.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-
+    const student = await Student.findById(req.params.id);
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    res.json({
-      message: 'Student status/role updated successfully',
-      student
+    // Update student with file path
+    student.profilePic = req.file.path;
+    await student.save();
+
+    res.status(200).json({
+      message: 'File uploaded successfully',
+      filePath: req.file.path,
+      fileName: req.file.filename,
+      student: student
     });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
+
+app.listen(3000, () => {
+    console.log('Server started on port 3000')
+})
