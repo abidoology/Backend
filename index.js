@@ -85,3 +85,45 @@ app.delete('/students/:id', async (req, res) => {
 app.listen(3000, () => {
     console.log('Server started on port 3000')
 })
+
+// DELETE - remove all students
+app.delete('/students', async (req, res) => {
+  try {
+    await Student.deleteMany();
+    res.json({ message: 'All students deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PATCH - Update only status/role field
+app.patch('/students/:id/status', async (req, res) => {
+  try {
+    const { status, role } = req.body;
+
+    const updateData = {};
+    if (status) updateData.status = status;
+    if (role) updateData.role = role;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: 'At least one field (status or role) is required' });
+    }
+
+    const student = await Student.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    res.json({
+      message: 'Student status/role updated successfully',
+      student
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
