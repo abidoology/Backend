@@ -1,3 +1,6 @@
+// Load environment variables from .env file
+require('dotenv').config();
+
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -6,18 +9,32 @@ const bcrypt = require('bcryptjs'); // password hashing
 const app = express();
 app.use(express.json());
 
+// ✅ ADD THESE TWO LINES
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 const connectDB = require('./config/db');
 const Student = require('./models/Student');
 
 connectDB();
 
-// JWT Secret
+// ===== ENVIRONMENT VARIABLES =====
+const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const MAX_FILE_SIZE = (process.env.MAX_FILE_SIZE || 5) * 1024 * 1024; // Convert MB to bytes
 
-// Multer configuration for file uploads
+// JWT Secret (Environment-specific)
+const JWT_SECRET_KEY = NODE_ENV === 'production' 
+  ? process.env.JWT_SECRET_PROD 
+  : (NODE_ENV === 'testing' ? process.env.JWT_SECRET_DEV : JWT_SECRET);
+
+const JWT_EXPIRY = process.env.JWT_EXPIRY || '7d';
+
+// ===== MULTER CONFIGURATION FOR FILE UPLOADS =====
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, process.env.UPLOAD_DIR || 'uploads/');
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -27,7 +44,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB file size limit
+  limits: { fileSize: MAX_FILE_SIZE }, // From environment variable
   fileFilter: (req, file, cb) => {
     const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
     if (allowedMimes.includes(file.mimetype)) {
@@ -38,13 +55,14 @@ const upload = multer({
   }
 });
 
+// ===== AUTHENTICATION MIDDLEWARE =====
 // Authentication Middleware - Verify JWT Token
 const authenticate = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'No token provided' });
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
     req.user = decoded;
     next();
   } catch (err) {
@@ -52,6 +70,7 @@ const authenticate = (req, res, next) => {
   }
 };
 
+// ===== ADMIN MIDDLEWARE =====
 // Admin Middleware
 const isAdmin = (req, res, next) => {
   if (!req.user.isAdmin) return res.status(403).json({ message: 'Admin access required' });
@@ -62,7 +81,7 @@ const isAdmin = (req, res, next) => {
 
 // Home
 app.get('/', (req, res) => {
-  res.send('Home Page');
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Get all students
@@ -201,8 +220,8 @@ app.post('/auth/register', async (req, res) => {
     // Create JWT token
     const token = jwt.sign(
       { _id: newStudent._id, email: newStudent.email, isAdmin: newStudent.isAdmin },
-      JWT_SECRET,
-      { expiresIn: '7d' }
+      JWT_SECRET_KEY,
+      { expiresIn: JWT_EXPIRY }
     );
 
     res.status(201).json({
@@ -237,8 +256,8 @@ app.post('/auth/login', async (req, res) => {
 
     const token = jwt.sign(
       { _id: student._id, email: student.email, isAdmin: student.isAdmin },
-      JWT_SECRET,
-      { expiresIn: '7d' }
+      JWT_SECRET_KEY,
+      { expiresIn: JWT_EXPIRY }
     );
 
     res.json({
@@ -280,8 +299,8 @@ app.delete('/auth/:id', authenticate, isAdmin, async (req, res) => {
   }
 });
 
-// Update status/role
-app.patch('/students/:id/status', async (req, res) => {
+// Update status/role (Protected route)
+app.patch('/students/:id/status', authenticate, async (req, res) => {
   try {
     const { status, role } = req.body;
     const updateData = {};
@@ -323,6 +342,16 @@ app.post('/api/resource/:id/upload', upload.single('file'), async (req, res) => 
   }
 });
 
-app.listen(3000, () => {
-  console.log('Server started on port 3000');
+// ===== START SERVER =====
+app.listen(PORT, () => {
+  console.log(`
+╔════════════════════════════════════════╗
+║     Student Management Backend API     ║
+╠════════════════════════════════════════╣
+║  ✅ Server started on port ${PORT}              ║
+║  📋 Environment: ${NODE_ENV}          ║
+║  🔗 API: http://localhost:${PORT}        ║
+║  📁 Frontend: http://localhost:${PORT}    ║
+╚════════════════════════════════════════╝
+  `);
 });

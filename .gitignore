@@ -1,0 +1,103 @@
+# ============================================
+# Environment & Configuration
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ============================================
+# Dependencies
+# ============================================
+node_modules/
+npm-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# ============================================
+# IDE & Editor
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.sublime-project
+.sublime-workspace
+*.code-workspace
+
+# ============================================
+# OS
+# ============================================
+Thumbs.db
+.DS_Store
+*.log
+
+# ============================================
+# Runtime & Build
+# ============================================
+dist/
+build/
+.next/
+out/
+.nuxt/
+.cache/
+.parcel-cache
+.env.*.js
+
+# ============================================
+# Testing
+# ============================================
+coverage/
+.nyc_output/
+*.lcov
+.mocha_output
+
+# ============================================
+# Logs
+# ============================================
+logs/
+logs/*
+!logs/.gitkeep
+*.log
+npm-debug.log*
+
+# ============================================
+# Uploads & Temporary Files
+# ============================================
+uploads/*
+!uploads/.gitkeep
+temp/
+tmp/
+*.tmp
+
+# ============================================
+# Database Files
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
+.mongodb
+
+# ============================================
+# Security & Credentials
+# ============================================
+*.key
+*.pem
+*.p12
+.credentials
+.secrets
+
+# ============================================
+# Project Specific
+# ============================================
+/dist
+/build
+config/local.js
+server.pid
