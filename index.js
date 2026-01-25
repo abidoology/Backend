@@ -87,7 +87,11 @@ app.get('/', (req, res) => {
 // Get all students
 app.get('/students', async (req, res) => {
   const students = await Student.find();
-  res.json(students);
+  const studentsWithProfilePics = students.map(student => ({
+    ...student.toObject(),
+    profilePic: student.profilePic ? `/${student.profilePic}` : ''
+  }));
+  res.json(studentsWithProfilePics);
 });
 
 // Get student by ID
@@ -95,7 +99,11 @@ app.get('/students/:id', async (req, res) => {
   try {
     const student = await Student.findById(req.params.id);
     if (!student) return res.status(404).json({ message: 'Student not found' });
-    res.json(student);
+    const studentWithProfilePic = {
+      ...student.toObject(),
+      profilePic: student.profilePic ? `/${student.profilePic}` : ''
+    };
+    res.json(studentWithProfilePic);
   } catch (err) {
     res.status(400).json({ message: 'Invalid ID' });
   }
@@ -110,7 +118,11 @@ app.get('/search', async (req, res) => {
     const students = await Student.find({ name: { $regex: name, $options: 'i' } });
     if (!students.length) return res.status(404).json({ message: 'Student not found' });
 
-    res.json(students);
+    const studentsWithProfilePics = students.map(student => ({
+      ...student.toObject(),
+      profilePic: student.profilePic ? `/${student.profilePic}` : ''
+    }));
+    res.json(studentsWithProfilePics);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -269,7 +281,8 @@ app.post('/auth/login', async (req, res) => {
         email: student.email,
         dept: student.dept,
         role: student.role,
-        status: student.status
+        status: student.status,
+        profilePic: student.profilePic ? `/${student.profilePic}` : ''
       }
     });
   } catch (err) {
@@ -282,7 +295,13 @@ app.get('/auth/profile', authenticate, async (req, res) => {
   try {
     const student = await Student.findById(req.user._id).select('-password');
     if (!student) return res.status(404).json({ message: 'Student not found' });
-    res.json({ message: 'Profile retrieved successfully', student });
+    
+    const studentWithProfilePic = {
+      ...student.toObject(),
+      profilePic: student.profilePic ? `/${student.profilePic}` : ''
+    };
+    
+    res.json({ message: 'Profile retrieved successfully', student: studentWithProfilePic });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -333,9 +352,17 @@ app.post('/api/resource/:id/upload', upload.single('file'), async (req, res) => 
 
     res.status(200).json({
       message: 'File uploaded successfully',
-      filePath: req.file.path,
+      filePath: `/${req.file.path}`,
       fileName: req.file.filename,
-      student
+      student: {
+        _id: student._id,
+        name: student.name,
+        email: student.email,
+        dept: student.dept,
+        role: student.role,
+        status: student.status,
+        profilePic: `/${student.profilePic}`
+      }
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

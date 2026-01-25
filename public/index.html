@@ -202,6 +202,46 @@
             justify-content: center;
             font-weight: 600;
             font-size: 18px;
+            overflow: hidden;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #3498db;
+            margin-right: 15px;
+        }
+
+        .profile-image-large {
+            width: 150px;
+            height: 150px;
+            border-radius: 15px;
+            object-fit: cover;
+            border: 4px solid #3498db;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .default-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 24px;
+            color: white;
+            margin-right: 15px;
         }
 
         .logout-btn {
@@ -1238,6 +1278,27 @@
                     currentUser = data.student;
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.student));
+                    
+                    // Fetch the latest profile data including profile picture
+                    try {
+                        const profileResponse = await fetch(`${API}/auth/profile`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${data.token}`
+                            }
+                        });
+                        
+                        if (profileResponse.ok) {
+                            const profileData = await profileResponse.json();
+                            if (profileData.student) {
+                                currentUser = profileData.student;
+                                localStorage.setItem('user', JSON.stringify(profileData.student));
+                            }
+                        }
+                    } catch (profileError) {
+                        console.log('Could not fetch profile data:', profileError);
+                    }
+                    
                     showDashboard();
                     showPopup('✅ Login successful! Welcome back!', 'success');
                 } else {
@@ -1309,7 +1370,14 @@
             if (user) {
                 document.getElementById('adminName').textContent = user.name;
                 document.getElementById('adminRole').textContent = user.role || 'Admin';
-                document.getElementById('adminAvatar').textContent = user.name.charAt(0).toUpperCase();
+                
+                // Display profile image or initials
+                const avatarElement = document.getElementById('adminAvatar');
+                if (user.profilePic && user.profilePic !== '') {
+                    avatarElement.innerHTML = `<img src="${user.profilePic}" alt="${user.name}" onerror="this.onerror=null; this.parentElement.innerHTML='${user.name.charAt(0).toUpperCase()}';">`;
+                } else {
+                    avatarElement.textContent = user.name.charAt(0).toUpperCase();
+                }
             }
         }
 
@@ -1616,10 +1684,20 @@
             students.forEach(student => {
                 const card = document.createElement('div');
                 card.className = 'student-card';
+                
+                // Create profile image HTML
+                const profileImageHTML = student.profilePic && student.profilePic !== '' 
+                    ? `<img src="${student.profilePic}" alt="${student.name}" class="profile-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <div class="default-avatar" style="display: none;">${student.name.charAt(0).toUpperCase()}</div>`
+                    : `<div class="default-avatar">${student.name.charAt(0).toUpperCase()}</div>`;
+                
                 card.innerHTML = `
-                    <div class="student-header">
-                        <h4>${student.name}</h4>
-                        <span class="student-id">ID: ${student._id}</span>
+                    <div class="student-header" style="display: flex; align-items: center;">
+                        ${profileImageHTML}
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0;">${student.name}</h4>
+                            <span class="student-id">ID: ${student._id}</span>
+                        </div>
                     </div>
                     <div class="student-details">
                         <div class="detail-item">
@@ -1827,10 +1905,20 @@
             students.forEach(student => {
                 const card = document.createElement('div');
                 card.className = 'student-card';
+                
+                // Create profile image HTML
+                const profileImageHTML = student.profilePic && student.profilePic !== '' 
+                    ? `<img src="${student.profilePic}" alt="${student.name}" class="profile-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <div class="default-avatar" style="display: none;">${student.name.charAt(0).toUpperCase()}</div>`
+                    : `<div class="default-avatar">${student.name.charAt(0).toUpperCase()}</div>`;
+                
                 card.innerHTML = `
-                    <div class="student-header">
-                        <h4>${student.name}</h4>
-                        <span class="student-id">ID: ${student._id}</span>
+                    <div class="student-header" style="display: flex; align-items: center;">
+                        ${profileImageHTML}
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0;">${student.name}</h4>
+                            <span class="student-id">ID: ${student._id}</span>
+                        </div>
                     </div>
                     <div class="student-details">
                         <div class="detail-item">
@@ -1920,6 +2008,19 @@
                     fileInput.value = '';
                     document.getElementById('filePreview').style.display = 'none';
                     document.getElementById('uploadStudentId').value = '';
+                    
+                    // Update local storage if the uploaded file is for the current user
+                    const currentUser = JSON.parse(localStorage.getItem('user'));
+                    if (currentUser && currentUser._id === studentId && data.student) {
+                        const updatedUser = { ...currentUser, profilePic: data.student.profilePic };
+                        localStorage.setItem('user', JSON.stringify(updatedUser));
+                        
+                        // Update the header avatar
+                        const avatarElement = document.getElementById('adminAvatar');
+                        if (data.student.profilePic) {
+                            avatarElement.innerHTML = `<img src="${data.student.profilePic}" alt="${currentUser.name}" onerror="this.onerror=null; this.parentElement.innerHTML='${currentUser.name.charAt(0).toUpperCase()}';">`;
+                        }
+                    }
                 } else {
                     showPopup(`❌ ${data.message || 'Upload failed'}`, 'error');
                 }
@@ -2019,9 +2120,21 @@
                 
                 if (response.ok) {
                     const student = data.student;
+                    
+                    // Create profile image HTML
+                    const profileImageHTML = student.profilePic && student.profilePic !== '' 
+                        ? `<div style="text-align: center; margin-bottom: 20px;">
+                               <img src="${student.profilePic}" alt="${student.name}" class="profile-image-large" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                               <div class="default-avatar" style="display: none; width: 150px; height: 150px; font-size: 60px; margin: 0 auto 20px;">${student.name.charAt(0).toUpperCase()}</div>
+                           </div>`
+                        : `<div style="text-align: center; margin-bottom: 20px;">
+                               <div class="default-avatar" style="width: 150px; height: 150px; font-size: 60px; margin: 0 auto; border-radius: 15px;">${student.name.charAt(0).toUpperCase()}</div>
+                           </div>`;
+                    
                     let profileHTML = `
                         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
-                            <h3>Profile Information</h3>
+                            ${profileImageHTML}
+                            <h3 style="text-align: center; margin-bottom: 20px;">Profile Information</h3>
                             <table style="width: 100%; margin-top: 15px;">
                                 <tr>
                                     <td style="font-weight: bold; padding: 10px;">ID:</td>
